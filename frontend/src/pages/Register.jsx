@@ -63,7 +63,7 @@ const Register = () => {
 
   return (
     <AuthLayout 
-      title="Join ShortenIt" 
+      title="Join Shortln" 
       subtitle="Create your account and start building closer connections with every link."
     >
       <div className="space-y-8">
