@@ -113,7 +113,7 @@ const Home = () => {
       <nav className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between w-full relative z-50">
         <div className="flex items-center gap-2">
           <LinkIcon className="text-brand-accent" size={32} />
-          <span className="text-2xl font-black text-brand-dark tracking-tight">ShortenIt</span>
+          <span className="text-2xl font-black text-brand-dark tracking-tight">Shortln</span>
         </div>
         <div className="flex items-center gap-4">
           <Link 
@@ -203,7 +203,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center text-center">
           <div className="flex items-center gap-2 mb-8">
             <LinkIcon className="text-brand-accent" size={40} />
-            <span className="text-3xl font-black tracking-tight">ShortenIt</span>
+            <span className="text-3xl font-black tracking-tight">Shortln</span>
           </div>
           <p className="text-gray-400 max-w-lg mb-12 leading-relaxed">
             The world's most advanced link management platform. Trusted by thousands of creators and businesses worldwide.
@@ -214,7 +214,7 @@ const Home = () => {
             <a href="#" className="text-gray-400 hover:text-white transition-colors">GitHub</a>
           </div>
           <div className="text-sm text-gray-500 border-t border-white/5 pt-12 w-full">
-            © 2026 ShortenIt Inc. All rights reserved. Built with precision.
+            © 2026 Shortln Inc. All rights reserved. Built with precision.
           </div>
         </div>
       </footer>

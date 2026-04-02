@@ -1,6 +1,6 @@
-# 🔗 P7: Advanced URL Shortener & Analytics Platform
+# 🔗 ShortenIt: Advanced URL Shortener & Analytics Platform
 
-P7 is a robust, full-stack enterprise-grade URL shortening solution designed for performance, security, and deep data insights. It empowers users to transform long, complex URLs into concise, branded links while capturing granular visitor analytics.
+ShortenIt is a robust, full-stack enterprise-grade URL shortening solution designed for performance, security, and deep data insights. It empowers users to transform long, complex URLs into concise, branded links while capturing granular visitor analytics.
 
 ---
 

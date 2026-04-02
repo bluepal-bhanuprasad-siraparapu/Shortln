@@ -57,7 +57,7 @@ const AuthLayout = ({ children, title, subtitle, showBackButton }) => {
         <div className="relative z-10 text-center mt-12 space-y-4 max-w-sm">
           <Link to="/" className="inline-flex items-center gap-2 mb-8 group">
             <LinkIcon className="text-[#3d5afe] group-hover:rotate-12 transition-transform" size={24} />
-            <span className="text-xl font-black text-white tracking-tight">ShortenIt</span>
+            <span className="text-xl font-black text-white tracking-tight">Shortln</span>
           </Link>
           <h1 className="text-3xl font-bold text-white leading-tight">{title}</h1>
           <p className="text-gray-400 text-lg leading-relaxed">{subtitle}</p>
@@ -81,7 +81,7 @@ const AuthLayout = ({ children, title, subtitle, showBackButton }) => {
           <div className="lg:hidden absolute top-8 left-8">
              <Link to="/" className="flex items-center gap-2">
               <LinkIcon className="text-[#3d5afe]" size={24} />
-              <span className="text-xl font-black text-[#0b1629] tracking-tight">ShortenIt</span>
+              <span className="text-xl font-black text-[#0b1629] tracking-tight">Shortln</span>
             </Link>
           </div>
         )}

@@ -20,7 +20,7 @@ const Pricing = () => {
         key: order.keyId, // Key ID from backend
         amount: order.amount,
         currency: order.currency,
-        name: "ShortenIt Pro",
+        name: "Shortln Pro",
         description: "Upgrade to Pro Plan",
         order_id: order.id,
         handler: async function (response) {

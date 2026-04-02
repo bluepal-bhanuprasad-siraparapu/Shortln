@@ -1,6 +1,6 @@
-# 🎨 P7 Frontend: UI/UX Documentation
+# 🎨 Shortln Frontend: UI/UX Documentation
 
-The P7 frontend is a sleek, modern dashboard built with React 18, focusing on speed, responsiveness, and a premium aesthetic.
+The Shortln frontend is a sleek, modern dashboard built with React 18, focusing on speed, responsiveness, and a premium aesthetic.
 
 ---
 

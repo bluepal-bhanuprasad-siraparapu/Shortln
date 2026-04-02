@@ -57,7 +57,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="p-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <LinkIcon className="text-brand-accent" size={28} />
-            <span className="text-xl font-black tracking-tight">ShortenIt</span>
+            <span className="text-xl font-black tracking-tight">Shortln</span>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors duration-200">
             <X size={24} />

@@ -33,7 +33,7 @@ public class EmailService {
             
             String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;\">"
                     + "<h2 style=\"color: #4F46E5; text-align: center;\">Password Reset Request</h2>"
-                    + "<p style=\"font-size: 16px; color: #333;\">You recently requested to reset your password for your P7 account.</p>"
+                    + "<p style=\"font-size: 16px; color: #333;\">You recently requested to reset your password for your ShortenIt account.</p>"
                     + "<p style=\"font-size: 16px; color: #333;\">Your 6-digit OTP is: <strong style=\"font-size: 20px;\">" + otp + "</strong></p>"
                     + "<p style=\"font-size: 16px; color: #333;\">This code is valid for 5 minutes. You can enter it manually, or simply click the button below to automatically proceed:</p>"
                     + "<div style=\"text-align: center; margin: 30px 0;\">"
@@ -58,13 +58,13 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             
             helper.setTo(to);
-            helper.setSubject("Welcome to P7 URL Shortener!");
+            helper.setSubject("Welcome to ShortenIt URL Shortener!");
             
             String loginUrl = "http://localhost:5173/auto-login?token=" + token;
             
             String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;\">"
-                    + "<h2 style=\"color: #4F46E5; text-align: center;\">Welcome to P7, " + name + "!</h2>"
-                    + "<p style=\"font-size: 16px; color: #333;\">Thank you for registering with P7 Advanced URL Shortener & Analytics Platform.</p>"
+                    + "<h2 style=\"color: #4F46E5; text-align: center;\">Welcome to ShortenIt, " + name + "!</h2>"
+                    + "<p style=\"font-size: 16px; color: #333;\">Thank you for registering with ShortenIt Advanced URL Shortener & Analytics Platform.</p>"
                     + "<p style=\"font-size: 16px; color: #333;\">We're so thrilled to have you on board! You can now start transforming your long URLs into concise, branded links.</p>"
                     + "<div style=\"text-align: center; margin: 30px 0;\">"
                     + "<a href=\"" + loginUrl + "\" style=\"background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;\">Click Here to Login</a>"
