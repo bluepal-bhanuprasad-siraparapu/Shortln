@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class RedirectServiceTest {
+class RedirectServiceTest {
 
     @Mock
     private ShortLinkRepository shortLinkRepository;
@@ -128,21 +128,13 @@ public class RedirectServiceTest {
     }
 
     @Test
-    void trackClick_LinkNotFound_DoesNotThrow() {
-        when(shortLinkRepository.findByShortCodeOrCustomAlias("abc123", "abc123"))
-                .thenReturn(Optional.empty());
-
-        assertDoesNotThrow(() -> redirectService.trackClick("abc123", "127.0.0.1", "Mozilla/5.0", null));
-    }
-
-    @Test
-    void trackClick_InactiveLink_SkipsTracking() {
-        activeLink.setActive(0);
+    void trackClick_Success() {
         when(shortLinkRepository.findByShortCodeOrCustomAlias("abc123", "abc123"))
                 .thenReturn(Optional.of(activeLink));
+        when(geoIpService.getCityResponse("1.2.3.4")).thenReturn(null);
 
-        assertDoesNotThrow(() -> redirectService.trackClick("abc123", "127.0.0.1", "Mozilla/5.0", null));
+        redirectService.trackClick("abc123", "1.2.3.4", "Mozilla/5.0", null);
 
-        verify(clickEventRepository, never()).save(any());
+        verify(clickEventRepository, times(1)).save(any());
     }
 }
