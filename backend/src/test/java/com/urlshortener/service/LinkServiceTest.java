@@ -80,21 +80,75 @@ public class LinkServiceTest {
     }
 
     @Test
-    void createLink_AliasAlreadyExists_ThrowsException() {
+    void createLink_FreePlanLimitReached_ThrowsException() {
+        testUser.setPlan(Plan.FREE);
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(shortLinkRepository.existsByCustomAlias("goog")).thenReturn(true);
+        when(shortLinkRepository.countByUserId(1L)).thenReturn(5L);
 
-        assertThrows(IllegalArgumentException.class, () -> linkService.createLink(linkRequest, 1L));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
+            () -> linkService.createLink(linkRequest, 1L));
+        assertTrue(exception.getMessage().contains("Free plan limit reached"));
     }
 
     @Test
-    void toggleLinkStatus_Success() {
-        ShortLink link = ShortLink.builder().id(1L).userId(1L).active(1).shortCode("goog").build();
+    void updateLink_Success() {
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).shortCode("abc").build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+        when(shortLinkRepository.save(any(ShortLink.class))).thenReturn(link);
+
+        LinkRequest updateReq = new LinkRequest();
+        updateReq.setTitle("New Title");
+        updateReq.setOriginalUrl("https://newurl.com");
+
+        LinkResponse result = linkService.updateLink(1L, updateReq, 1L, false);
+
+        assertEquals("New Title", result.getTitle());
+        verify(shortLinkRepository).save(link);
+    }
+
+    @Test
+    void updateLink_AccessDenied_ThrowsException() {
+        ShortLink link = ShortLink.builder().id(1L).userId(2L).shortCode("abc").build();
         when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
 
-        linkService.toggleLinkStatus(1L, 1L, false);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, 
+            () -> linkService.updateLink(1L, new LinkRequest(), 1L, false));
+    }
 
-        assertEquals(0, link.getActive());
-        verify(shortLinkRepository, times(1)).save(link);
+    @Test
+    void deleteLink_Success() {
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).shortCode("abc").build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+
+        linkService.deleteLink(1L, 1L, false);
+
+        verify(shortLinkRepository).delete(link);
+    }
+
+    @Test
+    void getUserLinks_Success() {
+        org.springframework.data.domain.Page<ShortLink> page = new org.springframework.data.domain.PageImpl<>(java.util.List.of(
+            ShortLink.builder().id(1L).userId(1L).shortCode("abc").build()
+        ));
+        when(shortLinkRepository.searchUserLinks(eq(1L), any(), any(), any(), any(), any())).thenReturn(page);
+
+        org.springframework.data.domain.Page<LinkResponse> result = linkService.getUserLinks(1L, "query", 1, null, null, org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    void getAllLinks_Success() {
+        org.springframework.data.domain.Page<ShortLink> page = new org.springframework.data.domain.PageImpl<>(java.util.List.of(
+            ShortLink.builder().id(1L).userId(1L).shortCode("abc").build()
+        ));
+        when(shortLinkRepository.searchLinks(any(), any(), any(), any(), any())).thenReturn(page);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+        org.springframework.data.domain.Page<LinkResponse> result = linkService.getAllLinks("query", 1, null, null, org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
     }
 }

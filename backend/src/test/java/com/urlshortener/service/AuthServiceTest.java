@@ -153,22 +153,70 @@ public class AuthServiceTest {
     }
 
     @Test
-    void resetPassword_InvalidOtp_ThrowsException() {
-        testUser.setResetOtp("123456");
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+    void authenticateUser_UserNotFound_ThrowsException() {
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("notfound@example.com");
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, 
-            () -> authService.resetPassword("test@example.com", "wrong-otp", "newPassword"));
+        assertThrows(IllegalArgumentException.class, () -> authService.authenticateUser(loginRequest));
     }
 
     @Test
-    void resetPassword_ExpiredOtp_ThrowsException() {
-        testUser.setResetOtp("123456");
-        testUser.setResetOtpExpiry(LocalDateTime.now().minusMinutes(1));
+    void authenticateUser_InvalidPassword_ThrowsException() {
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("test@example.com");
+        loginRequest.setPassword("wrong");
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
+        when(encoder.matches(anyString(), anyString())).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> authService.authenticateUser(loginRequest));
+    }
+
+    @Test
+    void magicLogin_Success() {
+        testUser.setAutoLoginToken("magic-token");
+        testUser.setAutoLoginExpiry(LocalDateTime.now().plusHours(1));
+        
+        when(userRepository.findByAutoLoginToken("magic-token")).thenReturn(Optional.of(testUser));
+        when(jwtTokenProvider.generateJwtToken(any())).thenReturn("magic-jwt");
+
+        JwtResponse response = authService.magicLogin("magic-token");
+
+        assertNotNull(response);
+        assertEquals("magic-jwt", response.getToken());
+        assertNull(testUser.getAutoLoginToken()); // Should be nullified
+    }
+
+    @Test
+    void magicLogin_ExpiredToken_ThrowsException() {
+        testUser.setAutoLoginToken("expired-token");
+        testUser.setAutoLoginExpiry(LocalDateTime.now().minusHours(1));
+        
+        when(userRepository.findByAutoLoginToken("expired-token")).thenReturn(Optional.of(testUser));
+
+        assertThrows(IllegalArgumentException.class, () -> authService.magicLogin("expired-token"));
+    }
+
+    @Test
+    void authenticateUser_SubscriptionExpired_DowngradesToFree() {
+        testUser.setPlan(Plan.PRO);
+        testUser.setSubscriptionExpiry(LocalDateTime.now().minusDays(1));
+        
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("test@example.com");
+        loginRequest.setPassword("password");
+
+        UserDetailsImpl userDetails = new UserDetailsImpl(1L, "Name", "test@example.com", "pass", 1, 0, "PRO", Collections.emptyList());
+        Authentication auth = mock(Authentication.class);
+        when(auth.getPrincipal()).thenReturn(userDetails);
+        when(authenticationManager.authenticate(any())).thenReturn(auth);
         
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(encoder.matches(anyString(), anyString())).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, 
-            () -> authService.resetPassword("test@example.com", "123456", "newPassword"));
+        authService.authenticateUser(loginRequest);
+
+        assertEquals(Plan.FREE, testUser.getPlan());
+        assertNull(testUser.getSubscriptionExpiry());
     }
 }
