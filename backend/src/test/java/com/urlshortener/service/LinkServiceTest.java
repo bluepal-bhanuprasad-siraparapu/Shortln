@@ -151,4 +151,79 @@ public class LinkServiceTest {
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
     }
+
+    @Test
+    void createLink_CustomAliasTaken_ThrowsException() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(shortLinkRepository.existsByCustomAlias("goog")).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class, 
+            () -> linkService.createLink(linkRequest, 1L));
+    }
+
+    @Test
+    void createLink_InvalidExpiry_ThrowsException() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        linkRequest.setExpiresAt(LocalDateTime.now().plusHours(10)); // Less than 24h
+
+        assertThrows(IllegalArgumentException.class, 
+            () -> linkService.createLink(linkRequest, 1L));
+    }
+
+    @Test
+    void updateLink_CustomAliasTaken_ThrowsException() {
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).shortCode("abc").build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+        when(shortLinkRepository.existsByCustomAlias("taken")).thenReturn(true);
+
+        LinkRequest updateReq = new LinkRequest();
+        updateReq.setCustomAlias("taken");
+
+        assertThrows(IllegalArgumentException.class, 
+            () -> linkService.updateLink(1L, updateReq, 1L, false));
+    }
+
+    @Test
+    void toggleLinkStatus_Success() {
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).active(1).build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+
+        linkService.toggleLinkStatus(1L, 1L, false);
+
+        assertEquals(0, link.getActive());
+        verify(shortLinkRepository).save(link);
+    }
+
+    @Test
+    void getLinkById_Success() {
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+
+        LinkResponse result = linkService.getLinkById(1L, 1L, false);
+
+        assertNotNull(result);
+        verify(shortLinkRepository).findById(1L);
+    }
+
+    @Test
+    void getUserLinksList_Success() {
+        when(shortLinkRepository.findByUserId(1L)).thenReturn(java.util.List.of(
+            ShortLink.builder().id(1L).userId(1L).build()
+        ));
+
+        java.util.List<LinkResponse> result = linkService.getUserLinksList(1L, null, null, null, null);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void invalidateCache_RedisError_DoesNotThrow() {
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).shortCode("abc").build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+        doThrow(new RuntimeException("Redis down")).when(redisTemplate).delete(anyString());
+
+        // Should not throw exception
+        assertDoesNotThrow(() -> linkService.deleteLink(1L, 1L, false));
+    }
 }
