@@ -32,6 +32,8 @@ spring:
             enable: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      missing-topics-fatal: false
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -55,6 +57,9 @@ app:
   base-url: ${APP_BASE_URL:http://my-shortener.com}
   geoip:
     db-path: ${GEOIP_DB_PATH:src/main/resources/geoip/GeoLite2-City.mmdb}
+  admin:
+    email: admin@example.com
+    password: admin123
 
 razorpay:
   key-id: ${RAZORPAY_KEY_ID:rzp_test_plLmWMce9bn3uu}

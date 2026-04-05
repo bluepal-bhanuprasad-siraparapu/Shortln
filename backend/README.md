@@ -1,6 +1,6 @@
-# ⚙️ P7 Backend: RESTful API Documentation
+# ⚙️ ShortenIt Backend: RESTful API Documentation
 
-The P7 backend is a high-performance, secure REST API built using the Spring Boot ecosystem. It handles link logic, analytics processing, user security, and automated background tasks.
+The ShortenIt backend is a high-performance, secure REST API built using the Spring Boot ecosystem. It handles link logic, analytics processing, user security, and automated background tasks.
 
 ---
 
