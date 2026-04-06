@@ -218,6 +218,24 @@ public class LinkServiceTest {
     }
 
     @Test
+    void getLinkById_NonOwner_ThrowsAccessDeniedException() {
+        ShortLink link = ShortLink.builder().id(1L).userId(2L).build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, 
+            () -> linkService.getLinkById(1L, 1L, false));
+    }
+
+    @Test
+    void toggleLinkStatus_NonOwner_ThrowsAccessDeniedException() {
+        ShortLink link = ShortLink.builder().id(1L).userId(2L).active(1).build();
+        when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, 
+            () -> linkService.toggleLinkStatus(1L, 1L, false));
+    }
+
+    @Test
     void invalidateCache_RedisError_DoesNotThrow() {
         ShortLink link = ShortLink.builder().id(1L).userId(1L).shortCode("abc").build();
         when(shortLinkRepository.findById(1L)).thenReturn(Optional.of(link));
@@ -225,5 +243,63 @@ public class LinkServiceTest {
 
         // Should not throw exception
         assertDoesNotThrow(() -> linkService.deleteLink(1L, 1L, false));
+    }
+
+    // --- Additional Gaps ---
+
+    @Test
+    void createLink_UserNotFound_ThrowsResourceNotFoundException() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(com.urlshortener.exception.ResourceNotFoundException.class, 
+            () -> linkService.createLink(linkRequest, 1L));
+    }
+
+    @Test
+    void createLink_WithShortCodeCollision_RetriesGeneration() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        linkRequest.setCustomAlias(null); // Force random generation
+        
+        when(shortCodeGenerator.generate()).thenReturn("coll", "unique");
+        when(shortLinkRepository.existsByShortCode("coll")).thenReturn(true);
+        when(shortLinkRepository.existsByShortCode("unique")).thenReturn(false);
+        when(shortLinkRepository.save(any(ShortLink.class))).thenReturn(ShortLink.builder().shortCode("unique").build());
+
+        linkService.createLink(linkRequest, 1L);
+
+        verify(shortCodeGenerator, times(2)).generate();
+    }
+
+    @Test
+    void getAllLinks_WithNullUserName_UsesEmail() {
+        org.springframework.data.domain.Page<ShortLink> page = new org.springframework.data.domain.PageImpl<>(java.util.List.of(
+            ShortLink.builder().id(10L).userId(1L).shortCode("abc").build()
+        ));
+        when(shortLinkRepository.searchLinks(any(), any(), any(), any(), any())).thenReturn(page);
+        
+        User userWithNoName = User.builder().id(1L).email("noname@example.com").name(null).build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(userWithNoName));
+
+        org.springframework.data.domain.Page<LinkResponse> result = linkService.getAllLinks(null, null, null, null, org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertEquals("noname@example.com", result.getContent().get(0).getUsername());
+    }
+
+    @Test
+    void updateLink_NotFound_ThrowsResourceNotFoundException() {
+        when(shortLinkRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(com.urlshortener.exception.ResourceNotFoundException.class,
+            () -> linkService.updateLink(99L, linkRequest, 1L, true));
+    }
+
+    @Test
+    void invalidateCache_NullCode_ReturnsEarly() {
+        // Mock deleteLink to call updateLink which calls invalidateCache
+        ShortLink link = ShortLink.builder().id(1L).userId(1L).shortCode(null).build();
+        when(shortLinkRepository.findById(10L)).thenReturn(Optional.of(link));
+        
+        linkService.deleteLink(10L, 1L, true);
+
+        verify(redisTemplate, never()).delete(anyString());
     }
 }

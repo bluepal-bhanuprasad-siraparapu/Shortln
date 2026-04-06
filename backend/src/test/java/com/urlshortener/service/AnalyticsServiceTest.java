@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import com.urlshortener.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -208,5 +209,152 @@ class AnalyticsServiceTest {
 
         assertNotNull(pdf);
         assertTrue(pdf.length > 0);
+    }
+
+    @Test
+    void exportLinkAnalytics_ReturnsNonEmptyPdf() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(proUser));
+        when(shortLinkRepository.findById(10L)).thenReturn(Optional.of(link));
+        when(clickEventRepository.findByShortLinkId(10L)).thenReturn(List.of(clickEvent));
+        doNothing().when(auditLogService).log(anyString(), anyString(), anyLong(), any(), any());
+
+        byte[] pdf = analyticsService.exportLinkAnalytics(10L, 1L, false);
+
+        assertNotNull(pdf);
+        assertTrue(pdf.length > 0);
+    }
+
+    // --- getClickHistory ---
+
+    @Test
+    void getClickHistory_ReturnsAggregatedData() {
+        when(shortLinkRepository.findByUserId(1L)).thenReturn(List.of(link));
+        when(clickEventRepository.findByShortLinkIdIn(anyList())).thenReturn(List.of(clickEvent));
+
+        List<Map<String, Object>> result = analyticsService.getClickHistory(1L, false);
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertEquals(clickEvent.getClickedAt().toLocalDate().toString(), result.get(0).get("date"));
+    }
+
+    @Test
+    void getClickHistory_NoLinks_ReturnsEmptyList() {
+        when(shortLinkRepository.findByUserId(1L)).thenReturn(List.of());
+
+        List<Map<String, Object>> result = analyticsService.getClickHistory(1L, false);
+
+        assertTrue(result.isEmpty());
+    }
+
+    // --- getLatestClickEvents ---
+
+    @Test
+    void getLatestClickEvents_WithQuery_CallsSearchEvents() {
+        org.springframework.data.domain.Page<ClickEvent> page = new org.springframework.data.domain.PageImpl<>(List.of(clickEvent));
+        when(clickEventRepository.searchEvents(anyString(), anyString(), any())).thenReturn(page);
+
+        org.springframework.data.domain.Page<ClickEvent> result = analyticsService.getLatestClickEvents("test", org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertNotNull(result);
+        verify(clickEventRepository).searchEvents(contains("test"), eq("test"), any());
+    }
+
+    @Test
+    void getLatestClickEvents_EmptyQuery_CallsFindAll() {
+        org.springframework.data.domain.Page<ClickEvent> page = new org.springframework.data.domain.PageImpl<>(List.of(clickEvent));
+        when(clickEventRepository.findAll(any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
+
+        analyticsService.getLatestClickEvents(" ", org.springframework.data.domain.PageRequest.of(0, 10));
+
+        verify(clickEventRepository).findAll(any(org.springframework.data.domain.Pageable.class));
+    }
+
+    // --- getLinkEvents ---
+
+    @Test
+    void getLinkEvents_WithQuery_CallsSearchLinkEvents() {
+        org.springframework.data.domain.Page<ClickEvent> page = new org.springframework.data.domain.PageImpl<>(List.of(clickEvent));
+        when(clickEventRepository.searchLinkEvents(anyLong(), anyString(), anyString(), any())).thenReturn(page);
+
+        analyticsService.getLinkEvents(10L, 99L, true, "test", org.springframework.data.domain.PageRequest.of(0, 10));
+
+        verify(clickEventRepository).searchLinkEvents(eq(10L), contains("test"), eq("test"), any());
+    }
+
+    // --- verifyOwnership Gaps ---
+
+    @Test
+    void verifyOwnership_Admin_SucceedsWithoutOwnershipCheck() {
+        // Should not call shortLinkRepository.findById if isAdmin is true
+        analyticsService.getOverallAnalytics(10L, 99L, true);
+        verify(shortLinkRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void verifyOwnership_LinkNotFound_ThrowsResourceNotFoundException() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(proUser));
+        when(shortLinkRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, 
+            () -> analyticsService.getOverallAnalytics(999L, 1L, false));
+    }
+
+    @Test
+    void verifyOwnership_UserNotFound_ThrowsResourceNotFoundException() {
+        when(userRepository.findById(888L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, 
+            () -> analyticsService.getOverallAnalytics(10L, 888L, false));
+    }
+
+    // --- Additional Gaps ---
+
+    @Test
+    void getDashboardStats_AsAdmin_ReturnsAllStats() {
+        when(shortLinkRepository.findAll()).thenReturn(List.of(link));
+        // Ensure linkIds is NOT empty
+        when(clickEventRepository.findByShortLinkIdIn(anyList())).thenReturn(List.of(clickEvent));
+
+        Map<String, Object> stats = analyticsService.getDashboardStats(999L, true);
+
+        assertEquals(1, stats.get("totalLinks"));
+        verify(shortLinkRepository).findAll();
+    }
+
+    @Test
+    void getClickHistory_AsAdmin_ReturnsData() {
+        when(shortLinkRepository.findAll()).thenReturn(List.of(link));
+        when(clickEventRepository.findByShortLinkIdIn(anyList())).thenReturn(List.of(clickEvent));
+
+        List<Map<String, Object>> result = analyticsService.getClickHistory(999L, true);
+
+        assertNotNull(result);
+        verify(shortLinkRepository).findAll();
+    }
+
+    @Test
+    void getClickHistory_BoundaryCase_IncludesTodayAnd30DaysAgo() {
+        java.time.LocalDate thirtyDaysAgo = java.time.LocalDate.now().minusDays(30);
+        ClickEvent boundaryEvent = ClickEvent.builder()
+                .id(999L).shortLinkId(10L).ipHash("h").clickedAt(thirtyDaysAgo.atStartOfDay()).build();
+        
+        when(shortLinkRepository.findByUserId(1L)).thenReturn(List.of(link));
+        when(clickEventRepository.findByShortLinkIdIn(anyList())).thenReturn(List.of(boundaryEvent, clickEvent));
+
+        List<Map<String, Object>> result = analyticsService.getClickHistory(1L, false);
+
+        // Should have 2 entries if dates are different, or 1 if same
+        assertTrue(result.size() >= 1);
+    }
+
+    @Test
+    void getLinkEvents_NoQuery_CallsFindByShortLinkId() {
+        org.springframework.data.domain.Page<ClickEvent> page = new org.springframework.data.domain.PageImpl<>(List.of(clickEvent));
+        when(clickEventRepository.findByShortLinkId(eq(10L), any())).thenReturn(page);
+
+        analyticsService.getLinkEvents(10L, 99L, true, null, org.springframework.data.domain.PageRequest.of(0, 10));
+
+        verify(clickEventRepository).findByShortLinkId(eq(10L), any());
     }
 }

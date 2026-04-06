@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import org.springframework.core.io.ClassPathResource;
+
 import java.io.File;
 import java.net.InetAddress;
 
@@ -27,7 +29,14 @@ public class GeoIpService {
                 dbReader = new DatabaseReader.Builder(database).build();
                 log.info("GeoIP database loaded successfully from {}", databasePath);
             } else {
-                log.warn("GeoIP database not found at {}. GeoIP lookups will be disabled.", databasePath);
+                String classpathParam = databasePath.replace("src/main/resources/", "");
+                ClassPathResource resource = new ClassPathResource(classpathParam);
+                if (resource.exists()) {
+                    dbReader = new DatabaseReader.Builder(resource.getInputStream()).build();
+                    log.info("GeoIP database loaded successfully from classpath: {}", classpathParam);
+                } else {
+                    log.warn("GeoIP database not found at {}. GeoIP lookups will be disabled.", databasePath);
+                }
             }
         } catch (Exception e) {
             log.error("Failed to initialize GeoIP database", e);

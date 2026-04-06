@@ -56,6 +56,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(org.springframework.security.config.Customizer.withDefaults())
+                /* 
+                 * CSRF is disabled because this is a stateless REST API using JWT. 
+                 * Authentication is header-based ("Authorization: Bearer <token>"), 
+                 * which browsers do not automatically attach, making CSRF attacks impossible.
+                 */
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -9,6 +9,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.mockito.MockedStatic;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import com.urlshortener.security.UserDetailsImpl;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -138,5 +147,105 @@ class AuditLogServiceTest {
 
         String csvContent = new String(result);
         assertTrue(csvContent.contains("SYSTEM"));
+    }
+
+    // --- getAllLogsForAdmin (paging) ---
+
+    @Test
+    void getAllLogsForAdmin_CallsRepositoryWithCorrectPatterns() {
+        org.springframework.data.domain.Page<AuditLog> page = mock(org.springframework.data.domain.Page.class);
+        org.springframework.data.domain.Pageable pageable = mock(org.springframework.data.domain.Pageable.class);
+        
+        when(auditLogRepository.searchAuditLogs(anyString(), anyString(), any(), any(), eq(pageable)))
+                .thenReturn(page);
+
+        // Test with real filters
+        auditLogService.getAllLogsForAdmin("search query", "LOGIN", null, null, pageable);
+
+        verify(auditLogRepository).searchAuditLogs(eq("%search query%"), eq("LOGIN"), any(), any(), eq(pageable));
+
+        // Test with "ALL" action (should result in null pattern)
+        auditLogService.getAllLogsForAdmin("", "ALL", null, null, pageable);
+        verify(auditLogRepository).searchAuditLogs(isNull(), isNull(), any(), any(), eq(pageable));
+    }
+
+    // --- generateAuditLogPdf ---
+
+    @Test
+    void generateAuditLogPdf_ReturnsNonEmptyBytes() {
+        AuditLog log = AuditLog.builder()
+                .id(1L)
+                .action("SECURITY_ALERT")
+                .details("Multiple failed logins")
+                .userName("Target User")
+                .email("target@example.com")
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(auditLogRepository.searchAuditLogsList(any(), any(), any(), any())).thenReturn(List.of(log));
+
+        byte[] result = auditLogService.generateAuditLogPdf(null, "ALL", null, null);
+
+        assertNotNull(result);
+        assertTrue(result.length > 0);
+        // Valid PDF header check: %PDF-
+        assertEquals('%', (char)result[0]);
+        assertEquals('P', (char)result[1]);
+        assertEquals('D', (char)result[2]);
+        assertEquals('F', (char)result[3]);
+    }
+
+    // --- log with static mocking ---
+
+    @Test
+    void log_AutoFillsFromSecurityContext() {
+        // Mock SecurityContextHolder
+        try (MockedStatic<SecurityContextHolder> mockedSecurity = mockStatic(SecurityContextHolder.class)) {
+            SecurityContext securityContext = mock(SecurityContext.class);
+            Authentication authentication = mock(Authentication.class);
+            UserDetailsImpl userDetails = mock(UserDetailsImpl.class);
+
+            mockedSecurity.when(SecurityContextHolder::getContext).thenReturn(securityContext);
+            when(securityContext.getAuthentication()).thenReturn(authentication);
+            when(authentication.getPrincipal()).thenReturn(userDetails);
+            
+            when(userDetails.getId()).thenReturn(100L);
+            when(userDetails.getEmail()).thenReturn("context@example.com");
+            when(userDetails.getName()).thenReturn("Context User");
+
+            // log(action, details, null, null, "1.1.1.1") -> triggers auto-fill for user
+            auditLogService.log("LOGIN", "Success", null, null, "1.1.1.1");
+
+            ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+            verify(auditLogRepository).save(captor.capture());
+            AuditLog saved = captor.getValue();
+
+            assertEquals(100L, saved.getUserId());
+            assertEquals("context@example.com", saved.getEmail());
+            assertEquals("Context User", saved.getUserName());
+        }
+    }
+
+    @Test
+    void log_AutoFillsIpFromRequestContext() {
+         // Mock RequestContextHolder
+        try (MockedStatic<RequestContextHolder> mockedRequest = mockStatic(RequestContextHolder.class)) {
+            ServletRequestAttributes attributes = mock(ServletRequestAttributes.class);
+            HttpServletRequest request = mock(HttpServletRequest.class);
+
+            mockedRequest.when(RequestContextHolder::getRequestAttributes).thenReturn(attributes);
+            when(attributes.getRequest()).thenReturn(request);
+            when(request.getRemoteAddr()).thenReturn("2.2.2.2");
+            when(request.getHeader("X-Forwarded-For")).thenReturn("3.3.3.3, 4.4.4.4");
+
+            // log(action, details, 1L, "e@e.com", null) -> triggers auto-fill for IP
+            auditLogService.log("TEST", "IP Detection", 1L, "e@e.com", null);
+
+            ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+            verify(auditLogRepository).save(captor.capture());
+            AuditLog saved = captor.getValue();
+
+            // X-Forwarded-For takes precedence, and first IP in list is used
+            assertEquals("3.3.3.3", saved.getIpAddress());
+        }
     }
 }

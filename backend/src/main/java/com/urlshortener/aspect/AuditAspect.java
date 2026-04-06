@@ -41,8 +41,7 @@ public class AuditAspect {
         Long userId = null;
         String email = null;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl) {
-            UserDetailsImpl userDetails = (UserDetailsImpl) auth.getPrincipal();
+        if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl userDetails) {
             userId = userDetails.getId();
             email = userDetails.getEmail();
         }
@@ -62,8 +61,7 @@ public class AuditAspect {
         Long userId = null;
         String email = null;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl) {
-            UserDetailsImpl userDetails = (UserDetailsImpl) auth.getPrincipal();
+        if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl userDetails) {
             userId = userDetails.getId();
             email = userDetails.getEmail();
         }

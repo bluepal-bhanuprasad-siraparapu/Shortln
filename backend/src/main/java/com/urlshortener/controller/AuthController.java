@@ -29,8 +29,8 @@ public class AuthController {
 
     @Operation(summary = "Authenticate user", description = "Verifies user credentials and returns a JWT token")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully authenticated"),
-        @ApiResponse(responseCode = "400", description = "Invalid credentials or validation error")
+            @ApiResponse(responseCode = "200", description = "Successfully authenticated"),
+            @ApiResponse(responseCode = "400", description = "Invalid credentials or validation error")
     })
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -46,8 +46,8 @@ public class AuthController {
 
     @Operation(summary = "Register new user", description = "Creates a new user account with default role")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "User registered successfully"),
-        @ApiResponse(responseCode = "400", description = "Email already exists or validation error")
+            @ApiResponse(responseCode = "200", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Email already exists or validation error")
     })
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
@@ -56,7 +56,8 @@ public class AuthController {
             authService.registerUser(signUpRequest);
             return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
         } catch (IllegalArgumentException e) {
-            log.warn("Registration validation failed for email: {} - Reason: {}", signUpRequest.getEmail(), e.getMessage());
+            log.warn("Registration validation failed for email: {} - Reason: {}", signUpRequest.getEmail(),
+                    e.getMessage());
             return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
         } catch (Exception e) {
             log.error("Unexpected error during registration for email: {}", signUpRequest.getEmail(), e);

@@ -174,4 +174,69 @@ class NotificationServiceTest {
 
         verify(notificationRepository, times(1)).deleteByUserId(1L);
     }
+
+    // --- getAllNotificationsForAdmin (paging) ---
+
+    @Test
+    void getAllNotificationsForAdmin_WithFilters_CallsRepository() {
+        org.springframework.data.domain.Page<Notification> page = mock(org.springframework.data.domain.Page.class);
+        org.springframework.data.domain.Pageable pageable = mock(org.springframework.data.domain.Pageable.class);
+        
+        when(notificationRepository.searchByAdmin(anyString(), anyString(), any(), any(), eq(pageable)))
+                .thenReturn(page);
+
+        notificationService.getAllNotificationsForAdmin("test", "SUBSCRIPTION", null, null, pageable);
+
+        verify(notificationRepository).searchByAdmin(eq("%test%"), eq("SUBSCRIPTION"), any(), any(), eq(pageable));
+    }
+
+    @Test
+    void getAllNotificationsForAdmin_AllAction_SendsNullPatterns() {
+        org.springframework.data.domain.Pageable pageable = mock(org.springframework.data.domain.Pageable.class);
+        
+        notificationService.getAllNotificationsForAdmin(" ", "ALL", null, null, pageable);
+
+        verify(notificationRepository).searchByAdmin(isNull(), isNull(), any(), any(), eq(pageable));
+    }
+
+    // --- getAllNotificationsForAdminList ---
+
+    @Test
+    void getAllNotificationsForAdminList_CallsRepository() {
+        when(notificationRepository.searchByAdminList(any(), any(), any(), any()))
+                .thenReturn(List.of(unreadNotification));
+
+        List<Notification> result = notificationService.getAllNotificationsForAdminList(null, null, null, null);
+
+        assertEquals(1, result.size());
+        verify(notificationRepository).searchByAdminList(isNull(), isNull(), any(), any());
+    }
+
+    // --- report generation ---
+
+    @Test
+    void generateNotificationReportCsv_ReturnsValidCsv() {
+        unreadNotification.setId(10L); // set ID for valid CSV output
+        when(notificationRepository.searchByAdminList(any(), any(), any(), any()))
+                .thenReturn(List.of(unreadNotification));
+
+        byte[] result = notificationService.generateNotificationReportCsv(null, "ALL", null, null);
+
+        assertNotNull(result);
+        String csv = new String(result);
+        assertTrue(csv.contains("ID,User ID,Message,Type,Created At"));
+        assertTrue(csv.contains("10,1,\"Test notification\",SUBSCRIPTION"));
+    }
+
+    @Test
+    void generateNotificationReportPdf_ReturnsPdfBytes() {
+        when(notificationRepository.searchByAdminList(any(), any(), any(), any()))
+                .thenReturn(List.of(unreadNotification));
+
+        byte[] result = notificationService.generateNotificationReportPdf(null, "ALL", null, null);
+
+        assertNotNull(result);
+        assertTrue(result.length > 0);
+        assertEquals('%', (char)result[0]); // PDF header check
+    }
 }

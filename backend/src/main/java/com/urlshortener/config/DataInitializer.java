@@ -21,7 +21,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         String adminEmail = "sirbhanu2000@gmail.com";
-        
+
         if (!userRepository.existsByEmail(adminEmail)) {
             User admin = User.builder()
                     .name("Admin")

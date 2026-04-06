@@ -40,7 +40,7 @@ public class LinkExpiryScheduler {
 
         for (ShortLink link : expiringLinks) {
             try {
-                long daysUntilExpiry = java.time.Duration.between(now, link.getExpiresAt()).toDays();
+                long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(now.toLocalDate(), link.getExpiresAt().toLocalDate());
                 int milestone = -1;
 
                 if (daysUntilExpiry == 7) milestone = 7;
@@ -48,7 +48,7 @@ public class LinkExpiryScheduler {
                 else if (daysUntilExpiry <= 0) milestone = 0;
 
                 // Only send if we haven't sent for this milestone yet and it's a valid milestone
-                if (milestone != -1 && (link.getLastExpiryMilestone() == null || link.getLastExpiryMilestone() > milestone)) {
+                if (milestone != -1 && (link.getLastExpiryMilestone() == null || link.getLastExpiryMilestone() == -1 || link.getLastExpiryMilestone() > milestone)) {
                     User user = userRepository.findById(link.getUserId()).orElse(null);
                     if (user != null) {
                         String milestoneMsg = milestone == 0 ? "Your link is expiring today!" : 

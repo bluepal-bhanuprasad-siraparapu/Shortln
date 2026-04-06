@@ -19,8 +19,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -106,7 +108,42 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void forgotPassword_ReturnsOk() throws Exception {
+        com.urlshortener.dto.ForgotPasswordRequest request = new com.urlshortener.dto.ForgotPasswordRequest();
+        request.setEmail("test@example.com");
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void resetPassword_ReturnsOk() throws Exception {
+        com.urlshortener.dto.ResetPasswordRequest request = new com.urlshortener.dto.ResetPasswordRequest();
+        request.setEmail("test@example.com");
+        request.setOtp("123456");
+        request.setNewPassword("new-password");
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void magicLogin_ReturnsOk() throws Exception {
+        when(authService.magicLogin(anyString())).thenReturn(jwtResponse);
+
+        mockMvc.perform(get("/api/auth/magic-login")
+                        .param("token", "magic-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("token"));
     }
 }
